@@ -1,6 +1,8 @@
 package webcrawler
 
 import groovyx.net.http.HttpBuilder
+import groovyx.net.http.HttpConfig
+import groovyx.net.http.optional.Download
 import org.jsoup.nodes.Document
 import org.jsoup.select.Elements
 
@@ -28,5 +30,22 @@ Document areaTissPage = HttpBuilder.configure {
 
 Elements tissFiles = areaTissPage.select("p.callout > a")
 
-tissFiles.each {println it.attr("href")}
+Document padraoTissPage = HttpBuilder.configure {
+    request.uri = tissFiles[0].attr("href")
+}.get() as Document
 
+Elements tableRows = padraoTissPage.select("tbody > tr")
+String componenteComunicacaoLink = tableRows.find {
+        it.select("td").first().html() == "Componente de Comunicação"
+    }.select("td > a").first().attr("href")
+
+HttpBuilder.configure {
+    request.uri = componenteComunicacaoLink
+}.get {
+    String fileName = componenteComunicacaoLink.split("/").last()
+    File file = new File("./Downloads/Arquivos_padrao_TISS/${fileName}")
+    file.getParentFile().mkdirs()
+    file.createNewFile()
+    Download.toFile(delegate as HttpConfig, file)
+    println "${fileName} salvo na pasta Downloads"
+}
